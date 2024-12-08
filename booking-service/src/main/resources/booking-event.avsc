@@ -1,0 +1,11 @@
+{
+  "type": "record",
+  "name": "BookingEvent",
+  "fields": [
+    { "name": "bookingId", "type": "string" },
+    { "name": "roomId", "type": "string", "default": "" },
+    { "name": "userId", "type": "string" },
+    { "name": "startTime", "type": "string" ,"default": "" },
+    { "name": "endTime", "type": "string" ,"default": "" },
+  ]
+}

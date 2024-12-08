@@ -1,0 +1,189 @@
+#version: '3.9'
+#
+#services:
+#
+#  postgres:
+#    image: postgres:latest
+#    ports:
+#      - "5432:5432"
+##    container_name: postgres
+##    environment:
+##      - POSTGRES_USER=admin
+##      - POSTGRES_PASSWORD=password
+##    volumes:
+##      - ./data/user:/var/lib/postgresql/data
+##      - ./init/user/init.sql:/docker-entrypoint-initdb.d/init.sql
+#
+##  database:
+##    image: postgres:15
+##    container_name: postgres_db
+##    environment:
+##      POSTGRES_USER: postgres
+##      POSTGRES_PASSWORD: # leave it blank or set a password if you decide to use one
+##      POSTGRES_DB: user-service
+##    volumes:
+##      - postgres_data:/var/lib/postgresql/data
+##    ports:
+##      - "5432:5432"
+#
+##  us:
+##    build:
+##      context: ./user-service
+##    container_name: user-service
+##    environment:
+##      SPRING_DATASOURCE_URL: jdbc:postgresql://database:5432/user-service
+##      SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
+##      SPRING_FLYWAY_ENABLED: 'true'
+##      SPRING_FLYWAY_LOCATIONS: classpath:db/migration
+##      SPRING_FLYWAY_SCHEMAS: users
+##      SPRING_FLYWAY_BASELINE_ON_MIGRATE: 'true'
+##    ports:
+##      - "8084:8084"
+##    depends_on:
+##      - database
+#
+##volumes:
+##  postgres_data:
+#
+#
+#  mongodb:
+#    image: mongo:latest
+#    container_name: mongodb-server
+##    environment:
+##      MONGO_INITDB_ROOT_USERNAME: yourusername
+##      MONGO_INITDB_ROOT_PASSWORD: yourpassword
+#    ports:
+#      - "27017:27017"
+##    volumes:
+##      - mongodb_data:/data/db
+#
+#  zookeeper:
+#    image: confluentinc/cp-zookeeper:latest
+#    container_name: zookeeper
+#    ports:
+#      - "2181:2181"
+#    environment:
+#      ZOOKEEPER_CLIENT_PORT: 2181
+#      ZOOKEEPER_TICK_TIME: 2000
+#
+#
+#
+#  kafka:
+#    image: confluentinc/cp-kafka:latest
+#    container_name: kafka
+#    ports:
+#      - "9092:9092"
+#    environment:
+#      KAFKA_BROKER_ID: 1
+#      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+#      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+#      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+#      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+#    depends_on:
+#      - zookeeper
+#    entrypoint: >
+#      sh -c "sleep 30 && /etc/confluent/docker/run"
+#
+##  schema-registry:
+##    image: confluentinc/cp-schema-registry:latest
+##    container_name: schema-registry
+##    depends_on:
+##      - kafka
+##    environment:
+##      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: kafka:9092
+##      SCHEMA_REGISTRY_LISTENER_HTTP_PORT: 8081
+##    ports:
+##      - "8082:8081"
+#
+#  prometheus:
+#    image: prom/prometheus:latest
+#    container_name: prometheus
+##    volumes:
+##      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+##      - prometheus_data:/prometheus
+#    ports:
+#      - "9090:9090"
+#    command:
+#      - "--config.file=/etc/prometheus/prometheus.yml"
+#      - "--storage.tsdb.path=/prometheus"
+#      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+#      - "--web.console.templates=/usr/share/prometheus/consoles"
+#
+#  grafana:
+#    image: grafana/grafana:latest
+#    container_name: grafana
+#    environment:
+#      GF_SECURITY_ADMIN_PASSWORD: admin
+#    ports:
+#      - "3001:3000"
+#    depends_on:
+#      - prometheus
+#
+#  loki:
+#    image: grafana/loki:latest
+#    ports:
+#      - "3100:3100"
+#    command: -config.file=/etc/loki/local-config.yaml
+#    networks:
+#      - loki
+#
+#  promtail:
+#    image: grafana/promtail:latest
+#    volumes:
+#      - /var/log:/var/log
+#    command: -config.file=/etc/promtail/config.yml
+#    networks:
+#      - loki
+#  approval_service:
+#    build:
+#      context: ./approval-service
+#    container_name: approval-service
+#    ports:
+#      - "8088:8088"
+#    depends_on:
+#      - mongodb
+#
+#  booking_service:
+#    build:
+#      context: ./booking-service
+#    container_name: booking-service
+#    ports:
+#      - "8087:8087"
+#    depends_on:
+#      - mongodb
+#      - kafka
+#
+#  event_service:
+#    build:
+#      context: ./event-service
+#    container_name: event-service
+#    ports:
+#      - "8085:8085"
+#    depends_on:
+#      - mongodb
+#      - kafka
+#
+#  room_service:
+#    build:
+#      context: ./room-service
+#    container_name: room-service
+#    ports:
+#      - "8083:8083"
+#    depends_on:
+#      - postgres
+#
+#  user_service:
+#    build:
+#      context: ./user-service
+#    container_name: user-service
+#    ports:
+#      - "8084:8084"
+#    depends_on:
+#      - postgres
+#
+#  gateway_application:
+#    build:
+#      context: ./gateway-application
+#    container_name: gateway-application
+#    ports:
+#      - "8081:8081"

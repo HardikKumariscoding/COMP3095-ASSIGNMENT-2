@@ -1,0 +1,211 @@
+version: "3.8"
+
+services:
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.3.2
+    hostname: zookeeper
+    container_name: zookeeper
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+
+  kafka:
+    image: confluentinc/cp-kafka:6.1.1
+    ports:
+      - "9092:9092"
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+
+  schema-registry:
+    image: confluentinc/cp-schema-registry:6.1.1
+    depends_on:
+      - kafka
+    ports:
+      - "8082:8082"
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: 'kafka:29092'
+      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8082
+
+  mongo_db:
+    image: mongo:5.0.2
+    ports:
+      - 27017:27017
+#    volumes:
+#      - db:/data/db
+
+  postgresdb:
+    image: postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=123456
+      - POSTGRES_DB=postgres-db
+    ports:
+      - 5433:5432
+    volumes:
+      - db:/var/lib/postgres
+
+  approval-service:
+    container_name: approval-service
+    depends_on:
+      - mongo_db
+      - user-service
+      - room-service
+    build: ./approval-service
+    restart: on-failure
+    ports:
+      - "8088:8088"
+    environment:
+      SPRING_APPLICATION_JSON: '{
+          "spring.data.mongodb.uri":"mongodb://mongo_db:27017/approvalservice",
+          "user.service.url":"http://user-service:8084",
+          "event.service.url":"http://event-service:8085"
+        }'
+    volumes:
+      - .m2:/root/.m2
+    stdin_open: true
+    tty: true
+
+  booking-service:
+    depends_on:
+      - mongo_db
+      - kafka
+      - user-service
+      - room-service
+    build:
+      context: ./booking-service
+    container_name: booking-service
+    restart: on-failure
+    ports:
+      - 8087:8087
+    environment:
+      SPRING_APPLICATION_JSON: '{
+          "spring.data.mongodb.uri" : "mongodb://mongo_db:27017/bookingservice",
+                                "spring.kafka.bootstrap-servers": "kafka:9092",
+                                          "user.service.url":"http://user-service:8084",
+          "room.service.url":"http://event-service:8083"
+                                
+        }'
+#    volumes:
+#      - .m2:/root/.m2
+    stdin_open: true
+    tty: true
+
+
+  event-service:
+    container_name: event-service
+    depends_on:
+      - mongo_db
+      - kafka
+    build: ./event-service
+    restart: on-failure
+    ports:
+      - "8085:8085"
+    environment:
+      SPRING_APPLICATION_JSON: '{
+          "spring.data.mongodb.uri" : "mongodb://mongo_db:27017/eventservice"
+
+        }'
+    #       .   "spring.kafka.bootstrap-servers": "kafka:9092"
+    volumes:
+      - .m2:/root/.m2
+    stdin_open: true
+    tty: true
+
+  user-service:
+    container_name: user-service
+    depends_on:
+      - postgresdb
+    build: ./user-service
+    restart: on-failure
+    ports:
+      - "8084:8084"
+    environment:
+      SPRING_APPLICATION_JSON: '{
+        "spring.datasource.url"  : "jdbc:postgresql://postgresdb:5432/postgres-db",
+        "spring.datasource.username" : "postgres",
+        "spring.datasource.password" : "123456",
+        "spring.jpa.properties.hibernate.dialect" : "org.hibernate.dialect.PostgreSQLDialect",
+        "spring.jpa.hibernate.ddl-auto" : "update",
+        "spring.flyway.baseline-on-migrate" : "true"
+      }'
+    volumes:
+      - .m2:/root/.m2
+    stdin_open: true
+    tty: true
+
+  room-service:
+    container_name: room-service
+    depends_on:
+      - postgresdb
+    build: ./room-service
+    restart: on-failure
+    ports:
+      - "8083:8083"
+    environment:
+      SPRING_APPLICATION_JSON: '{
+        "spring.datasource.url"  : "jdbc:postgresql://postgresdb:5432/postgres-db",
+        "spring.datasource.username" : "postgres",
+        "spring.datasource.password" : "123456",
+        "spring.jpa.properties.hibernate.dialect" : "org.hibernate.dialect.PostgreSQLDialect",
+        "spring.jpa.hibernate.ddl-auto" : "update",
+        "spring.flyway.baseline-on-migrate" : "true"
+      }'
+    volumes:
+      - .m2:/root/.m2
+    stdin_open: true
+    tty: true
+
+  gateway-service:
+    container_name: gateway-service
+    build: ./gateway-application
+    restart: on-failure
+    depends_on:
+      - user-service
+      - event-service
+      - approval-service
+      - booking-service
+      - room-service
+    ports:
+      - "8081:8081"
+    stdin_open: true
+    tty: true
+
+
+  loki:
+    image: grafana/loki:3.0.0
+    container_name: loki
+    ports:
+      - 3100:3100
+#    command: -config.file=/etc/loki/loki.yaml
+#    volumes:
+#      - ./config/loki/loki.yaml:/etc/loki/loki.yaml
+#    networks:
+#      - app
+
+  promtail:
+    image:  grafana/promtail:3.0.0
+    container_name: promtail
+#    volumes:
+#      - ./config/promtail/promtail.yaml:/etc/promtail/docker-config.yaml
+#      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+#      - /var/run/docker.sock:/var/run/docker.sock
+#    command: -config.file=/etc/promtail/docker-config.yaml
+    depends_on:
+      - loki
+#    networks:
+#      - app
+
+volumes:
+  db:

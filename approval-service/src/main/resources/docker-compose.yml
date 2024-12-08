@@ -1,0 +1,58 @@
+version: '3.8'
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8088:8088"
+    depends_on:
+      - mongo
+#      - kafka
+    environment:
+      # MongoDB connection URI for your Spring Boot application
+      SPRING_DATA_MONGODB_URI: mongodb://mongo:27017/approvalservice
+#      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+
+  mongo:
+    image: mongo:5.0
+    container_name: mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+
+  user-client:
+    image: order-client:latest
+    container_name: order-service
+    ports:
+    - "8084:8084"
+
+  event-client:
+    image: event-client:latest
+    container_name: event-service
+    ports:
+      - "8085:8085"
+
+#  zookeeper:
+#    image: confluentinc/cp-zookeeper:7.5.0
+#    container_name: zookeeper
+#    environment:
+#      ZOOKEEPER_CLIENT_PORT: 2181
+#      ZOOKEEPER_TICK_TIME: 2000
+#
+#  kafka:
+#    image: confluentinc/cp-kafka:7.5.0
+#    container_name: kafka
+#    ports:
+#      - "9092:9092"
+#    environment:
+#      KAFKA_BROKER_ID: 1
+#      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+#      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+#      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+#    depends_on:
+#      - zookeeper
+
+volumes:
+  mongo-data:
